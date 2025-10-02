@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест загрузки exe файлов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Тест загрузки exe файлов</h1>
+        <p>Этот инструмент позволяет загружать exe файлы в папку public через API эндпоинт.</p>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="fileInput">Выберите exe файл (максимум 100MB):</label>
+                <input type="file" id="fileInput" accept=".exe" required>
+            </div>
+            
+            <button type="submit" id="uploadBtn">Загрузить файл</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const resultDiv = document.getElementById('result');
+            
+            const file = fileInput.files[0];
+            if (!file) {
+                showResult('Пожалуйста, выберите файл', 'error');
+                return;
+            }
+            
+            if (!file.name.endsWith('.exe')) {
+                showResult('Разрешены только .exe файлы', 'error');
+                return;
+            }
+            
+            if (file.size > 100 * 1024 * 1024) {
+                showResult('Файл слишком большой. Максимальный размер: 100MB', 'error');
+                return;
+            }
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Загрузка...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/upload-exe', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`
+                        <strong>✅ ${result.message}</strong><br>
+                        <strong>Файл:</strong> ${result.filename}<br>
+                        <strong>Размер:</strong> ${(result.size / 1024 / 1024).toFixed(2)} MB<br>
+                        <strong>URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a><br>
+                        <strong>Путь:</strong> ${result.path}
+                    `, 'success');
+                    fileInput.value = '';
+                } else {
+                    showResult(`❌ Ошибка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Ошибка сети: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Загрузить файл';
+            }
+        });
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = `result ${type}`;
+        }
+    </script>
+</body>
+</html>

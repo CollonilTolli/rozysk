@@ -1,0 +1,9 @@
+# Exclude only large executables (1.1GB each) - too big for Vercel
+public/ROZYSK-Setup.exe
+
+# Development files
+.env.local
+.env
+node_modules/
+.next/
+.vercel/
