@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Large files
 public/ROZYSK-Setup.exe
+
+.vercel

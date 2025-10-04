@@ -174,7 +174,7 @@ const WantedPersonModal: React.FC<WantedPersonModalProps> = ({
             </p>
             <div className="mt-2 text-center">
               <a
-                href="/ROZYSK-Setup.exe"
+                href="https://github.com/CollonilTolli/rozysk/releases/download/v1.0.0/ROZYSK-Setup.exe"
                 download
                 className={`inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-md transition-colors ${
                   isAccessibilityMode

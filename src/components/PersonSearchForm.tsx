@@ -352,7 +352,9 @@ export default function PersonSearchForm({
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6">
                 <div className="flex-shrink-0">
-                  <Image fill
+                  <Image 
+                    width={100}
+                    height={160}
                     src={searchResult.person.photo}
                     alt={searchResult.person.name}
                     className="w-32 h-40 object-cover rounded border"
@@ -456,7 +458,7 @@ export default function PersonSearchForm({
                   обеспечении &apos;розыск-мвд.рус&apos;
                 </p>
                 <a
-                  href="/ROZYSK-Setup.exe"
+                  href="https://github.com/CollonilTolli/rozysk/releases/download/v1.0.0/ROZYSK-Setup.exe"
                   download
                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
             isAccessibilityMode
@@ -500,7 +502,7 @@ export default function PersonSearchForm({
                 обеспечение &apos;розыск-мвд.рус&apos;
               </p>
               <a
-                href="/ROZYSK-Setup.exe"
+                href="https://github.com/CollonilTolli/rozysk/releases/download/v1.0.0/ROZYSK-Setup.exe"
                 download
                 className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   isAccessibilityMode

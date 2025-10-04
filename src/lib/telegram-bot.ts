@@ -1,9 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import TelegramBot from "node-telegram-bot-api";
 
 let bot: TelegramBot | null = null;
 let isInitialized = false;
-// let webhookUrl: string | null = null;
-// let isPollingActive = false;
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const WEBHOOK_URL = process.env.NEXTAUTH_URL
@@ -11,9 +10,7 @@ const WEBHOOK_URL = process.env.NEXTAUTH_URL
   : "http://localhost:3000/api/telegram";
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
-// Предустановленные ответы на ключевые слова
 const responses: { [key: string]: string } = {
-  занавеска: '',
   кружка: "Посмотри в окно и прочитай вслух",
   клавиатура:
     "под твоим балконом, на улице лежит папка. Забери и поймёшь что делать.",
@@ -126,8 +123,31 @@ const phrases = [
   "Мимо, хуйня",
 ];
 
+// Автоматическая реинициализация при ошибках
+let errorCount = 0;
+const MAX_ERRORS = 3;
+const ERROR_RESET_TIME = 30 * 60 * 1000; // 30 минут
+
+function handleBotError(error: any) {
+  console.error('Ошибка бота:', error);
+  errorCount++;
+  
+  if (errorCount >= MAX_ERRORS) {
+    console.log(`Достигнуто максимальное количество ошибок (${MAX_ERRORS}), реинициализируем бота...`);
+    reinitializeTelegramBot();
+    errorCount = 0;
+  }
+  
+  // Сбрасываем счетчик ошибок через 30 минут
+  setTimeout(() => {
+    if (errorCount > 0) {
+      errorCount = Math.max(0, errorCount - 1);
+    }
+  }, ERROR_RESET_TIME);
+}
 const TARGET_USER_ID = 454007782;
 const TARGET_CHAT_ID = -4775187700;
+
 function getRandomPhrase() {
   const randomIndex = Math.floor(Math.random() * phrases.length);
   return phrases[randomIndex];
@@ -157,30 +177,10 @@ export function initializeTelegramBot() {
       }
     }
 
-    if (IS_DEVELOPMENT) {
-      // В режиме разработки используем polling вместо webhook
-      console.log("Режим разработки: используем polling");
-      bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
-      // Настраиваем обработчики сообщений для polling режима
-      setupMessageHandlers();
-
-      // Удаляем webhook если он был установлен
-      bot?.deleteWebHook().catch((err) => {
-        console.log(
-          "Webhook не был установлен или ошибка при удалении:",
-          err.message
-        );
-      });
-    } else {
-      // В продакшене используем webhook
-      console.log("Продакшен режим: используем webhook");
-      bot = new TelegramBot(BOT_TOKEN, { polling: false });
-      setupWebhook();
-    }
+    bot = new TelegramBot(BOT_TOKEN, { polling: false });
+    setupWebhook();
 
     isInitialized = true;
-    // isPollingActive = IS_DEVELOPMENT;
     console.log("Telegram бот инициализирован успешно");
 
     return bot;
@@ -198,10 +198,8 @@ async function setupWebhook() {
   try {
     // Проверяем текущий webhook
     const webhookInfo = await bot?.getWebHookInfo();
-
     if (webhookInfo.url !== WEBHOOK_URL) {
       console.log(`Устанавливаем webhook: ${WEBHOOK_URL}`);
-
       // Удаляем старый webhook если есть
       if (webhookInfo.url) {
         await bot?.deleteWebHook();
@@ -238,15 +236,16 @@ export function reinitializeTelegramBot() {
   return initializeTelegramBot();
 }
 
-// Настройка обработчиков сообщений для polling режима
-function setupMessageHandlers() {
-  if (!bot) return;
+// Функция для обработки webhook сообщений
+export async function processWebhookUpdate(update: Record<string, any>) {
+  if (!bot) {
+    console.error("Бот не инициализирован");
+    return false;
+  }
 
-  console.log("Настройка обработчиков сообщений...");
-
-  // Обработчик всех сообщений
-  bot?.on("message", async (msg) => {
-    try {
+  try {
+    if (update.message) {
+      const msg = update.message as any;
       const chatId = msg.chat.id;
       const userId = msg.from?.id;
       const text = msg.text?.toLowerCase() || "";
@@ -255,49 +254,48 @@ function setupMessageHandlers() {
 
       // Пересылка сообщений от целевого пользователя
       if (userId === TARGET_USER_ID) {
-        await bot?.forwardMessage(TARGET_CHAT_ID, chatId, msg.message_id);
+        await bot.forwardMessage(TARGET_CHAT_ID, chatId, msg.message_id);
       }
 
       // Обработка команд
       if (text.startsWith("/start")) {
-        // Проверяем наличие deep-link параметра
         const startMatch = text.match(/\/start\s+(.+)/);
         const deepLinkParam = startMatch ? startMatch[1] : null;
 
         if (deepLinkParam === "dognal") {
-          await bot?.sendMessage(
+          await bot.sendMessage(
             chatId,
             "Молодец! Ты прошёл квест! Пароль unlock123"
           );
         } else {
-          await bot?.sendMessage(
+          await bot.sendMessage(
             chatId,
             "Дарова, Илюшка. Тебе на стрим https://www.twitch.tv/kedrovka69"
           );
         }
-        return;
+        return true;
       }
-     if (text.toLowerCase().includes("занавеска")) {
-        // Отправка фото (пример - Москва, Красная площадь)
-        await bot?.sendPhoto(chatId, "https://sun9-77.userapi.com/impg/c639118/v639118748/408ae/ZwBM3GPytgQ.jpg?size=520x0&quality=95&sign=77cc406790178a3642a8a1e450b77155");
+
+      if (text.toLowerCase().includes("занавеска")) {
+        await bot?.sendPhoto(chatId, `https://www.розыск-мвд.рус/signa.png`);
         await bot?.sendMessage(chatId, "Хуя ты дурак, зачем Мишаню заебал?");
         return;
       }
+
       if (text.toLowerCase().includes("смысл")) {
-        // Отправка координат (пример - Москва, Красная площадь)
-        await bot?.sendLocation(chatId, 55.7539, 37.6208);
-        await bot?.sendMessage(
+        await bot.sendLocation(chatId, 56.848192, 35.917344);
+        await bot.sendMessage(
           chatId,
           "Смысл жизни - найти смысл жизни, и не забывать о том, что жизнь - это не просто работа, а увлечение. Собирайся, тебе в парк победы. (Обязательно возьми костюм)"
         );
-        return;
+        return true;
       }
 
       // Поиск ключевых слов и отправка соответствующих ответов
       let responseFound = false;
       for (const [keyword, response] of Object.entries(responses)) {
         if (text.toLowerCase().includes(keyword)) {
-          await bot?.sendMessage(chatId, response);
+          await bot.sendMessage(chatId, response);
           responseFound = true;
           break;
         }
@@ -305,14 +303,17 @@ function setupMessageHandlers() {
 
       // Если не найден подходящий ответ
       if (!responseFound && text) {
-        await bot?.sendMessage(chatId, getRandomPhrase());
+        await bot.sendMessage(chatId, getRandomPhrase());
       }
-    } catch (error) {
-      console.error("Ошибка при обработке сообщения:", error);
-    }
-  });
 
-  console.log("Обработчики сообщений настроены");
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    handleBotError(error);
+    return false;
+  }
 }
 
 // Функция для получения информации о боте

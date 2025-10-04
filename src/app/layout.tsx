@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "МВД России - Официальный сайт",
-  description: "Министерство внутренних дел Российской Федерации",
+  title: "МВД Розыск - Официальный сайт",
+  description: "Розыск министерства внутренних дел Российской Федерации",
 };
 
 export default function RootLayout({
